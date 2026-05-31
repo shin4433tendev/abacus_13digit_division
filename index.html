@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>珠算 13桁商割 練習</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0d0d;
+    --panel:     #141414;
+    --border:    #2a2a2a;
+    --accent:    #c8a96e;
+    --accent2:   #e8c98e;
+    --red:       #d94f4f;
+    --green:     #4fcf8a;
+    --text:      #e8e0d0;
+    --muted:     #666;
+    --mono:      'Noto Sans JP', sans-serif;
+    --serif:     'Noto Sans JP', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  button, select, input, label { -webkit-tap-highlight-color: transparent; }
+  input[type=range] { -webkit-appearance: none; appearance: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--serif);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    width: 100%;
+    max-width: 640px;
+  }
+  .title-ja {
+    font-size: clamp(1.1rem, 3vw, 1.4rem);
+    font-weight: 900;
+    letter-spacing: .25em;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .title-sub {
+    font-size: .7rem;
+    letter-spacing: .35em;
+    color: var(--muted);
+    margin-top: 6px;
+    text-transform: uppercase;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px 24px 24px;
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .problem-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    font-family: var(--mono);
+  }
+  .dividend {
+    font-size: clamp(2rem, 6vw, 2.8rem);
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: .04em;
+  }
+  .divop {
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    color: var(--muted);
+    margin: 0 10px;
+  }
+  .divisor {
+    font-size: clamp(2rem, 6vw, 2.8rem);
+    font-weight: 400;
+    color: var(--accent2);
+    letter-spacing: .04em;
+    transition: opacity .3s;
+  }
+  .divisor.hidden { opacity: 0; }
+
+  .countdown-display {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    color: var(--accent);
+    min-height: 2.4rem;
+    line-height: 1;
+    transition: color .3s;
+  }
+  .countdown-display.urgent { color: var(--red); }
+  .countdown-display.idle   { color: transparent; }
+
+  .status-line {
+    text-align: center;
+    font-size: .8rem;
+    letter-spacing: .15em;
+    min-height: 1.4em;
+    color: var(--muted);
+  }
+  .status-line.reading  { color: var(--accent); }
+  .status-line.waiting  { color: var(--green); }
+  .status-line.showing  { color: var(--text); }
+
+  .bar-wrap {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width linear;
+    width: 100%;
+  }
+
+  .answer-block {
+    background: #0a0a0a;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 16px 18px;
+    font-family: var(--mono);
+    display: none;
+    gap: 10px;
+    flex-direction: column;
+  }
+  .answer-block.visible { display: flex; }
+  .ans-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ans-label {
+    font-size: .65rem;
+    letter-spacing: .2em;
+    color: var(--muted);
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .ans-value {
+    font-size: clamp(.95rem, 2.5vw, 1.15rem);
+    color: var(--green);
+    word-break: break-all;
+  }
+  .ans-value .decimal-part { color: var(--accent2); }
+  .ans-value .highlight-12 {
+    background: var(--accent);
+    color: #000;
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+  .ans-value .remainder-val { color: var(--red); }
+  .ans-note {
+    font-size: .6rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .settings-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .field label {
+    font-size: .6rem;
+    letter-spacing: .15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    line-height: 1.3;
+    min-height: 2.2em;
+  }
+  .field input[type=range] {
+    accent-color: var(--accent);
+    width: 100%;
+    cursor: pointer;
+  }
+  .field .val {
+    font-family: var(--mono);
+    font-size: .8rem;
+    color: var(--accent2);
+  }
+
+  .voice-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .voice-row label {
+    font-size: .6rem;
+    letter-spacing: .15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .voice-select-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  select#voice-select {
+    flex: 1;
+    background: #0a0a0a;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 7px 10px;
+    font-family: var(--serif);
+    font-size: .78rem;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+    transition: border-color .15s;
+  }
+  select#voice-select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  #btn-voice-test {
+    font-size: .7rem;
+    letter-spacing: .1em;
+    padding: 7px 12px;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  #btn-voice-test:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .voice-name-disp {
+    font-size: .65rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  button {
+    font-family: var(--serif);
+    font-size: .85rem;
+    letter-spacing: .15em;
+    padding: 12px 0;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text);
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  button:hover { background: var(--border); }
+  button.primary { border-color: var(--accent); color: var(--accent); }
+  button.primary:hover { background: var(--accent); color: #000; }
+  button.danger  { border-color: var(--red); color: var(--red); }
+  button.danger:hover  { background: var(--red); color: #fff; }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+
+  .stats-row {
+    display: flex;
+    justify-content: space-around;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+  .stat { text-align: center; }
+  .stat .n {
+    font-family: var(--mono);
+    font-size: 1.5rem;
+    color: var(--accent2);
+    line-height: 1;
+  }
+  .stat .l {
+    font-size: .6rem;
+    letter-spacing: .2em;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  details { border-top: 1px solid var(--border); padding-top: 12px; }
+  summary {
+    cursor: pointer;
+    font-size: .7rem;
+    letter-spacing: .2em;
+    color: var(--muted);
+    list-style: none;
+    outline: none;
+  }
+  summary::after { content: ' ▼'; }
+  details[open] summary::after { content: ' ▲'; }
+  #history-list {
+    margin-top: 10px;
+    max-height: 180px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: .72rem;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .hist-item { display: flex; gap: 10px; flex-wrap: wrap; }
+  .hist-num  { color: var(--muted); width: 2em; text-align: right; }
+  .hist-expr { color: var(--text); }
+  .hist-d12  { color: var(--accent2); }
+  .hist-rem  { color: var(--red); }
+
+  @media (max-width: 460px) {
+    .settings-row { grid-template-columns: 1fr 1fr; }
+    .btn-row      { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 320px) {
+    .settings-row { grid-template-columns: 1fr; }
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label {
+    font-size: .75rem;
+    letter-spacing: .12em;
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .toggle-label small {
+    display: block;
+    font-size: .6rem;
+    color: var(--muted);
+    letter-spacing: .08em;
+    margin-top: 2px;
+  }
+  .toggle-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 44px;
+    height: 24px;
+  }
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+  }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: var(--muted);
+    border-radius: 50%;
+    transition: transform .2s, background .2s;
+  }
+  .toggle-switch input:checked + .toggle-track {
+    background: #2a4a2e;
+  }
+  .toggle-switch input:checked + .toggle-track::after {
+    transform: translateX(20px);
+    background: var(--green);
+  }
+  .toggles-block {
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 4px 14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-ja">珠算 １３商割</div>
+</header>
+
+<div class="card">
+
+  <!-- Problem -->
+  <div class="problem-row" aria-live="polite">
+    <span class="dividend">142884</span>
+    <span class="divop">÷</span>
+    <span class="divisor hidden" id="divisor-display">——————</span>
+  </div>
+
+  <!-- Countdown number -->
+  <div class="countdown-display idle" id="countdown-display">—</div>
+
+  <!-- Status -->
+  <div class="status-line" id="status">スタートを押して練習を開始</div>
+
+  <!-- Progress bar (active only during countdown) -->
+  <div class="bar-wrap"><div class="bar-fill" id="bar"></div></div>
+
+  <!-- Answer -->
+  <div class="answer-block" id="answer-block">
+    <div class="ans-row">
+      <span class="ans-label">答え（商）</span>
+      <span class="ans-value" id="ans-quotient"></span>
+    </div>
+    <div class="ans-row">
+      <span class="ans-label">小数第12位</span>
+      <span class="ans-value" id="ans-d12"></span>
+    </div>
+    <div class="ans-row">
+      <span class="ans-label">余り※</span>
+      <span class="ans-value" id="ans-remainder"></span>
+    </div>
+    <div class="ans-note">※ 余り = 小数第12位まで計算後の残り（0 &lt; 余り &lt; 除数）</div>
+  </div>
+
+  <!-- Voice selector -->
+  <div class="voice-row">
+    <label>読み上げ音声</label>
+    <div class="voice-select-wrap">
+      <select id="voice-select"><option value="">（音声を読み込み中...）</option></select>
+      <button id="btn-voice-test">試聴</button>
+    </div>
+    <span class="voice-name-disp" id="voice-name-disp"></span>
+  </div>
+
+  <!-- Settings -->
+  <div class="settings-row">
+    <div class="field">
+      <label>読み上げ速度</label>
+      <input type="range" id="rate-slider" min="0.5" max="2" step="0.1" value="1">
+      <span class="val" id="rate-val">×1.0</span>
+    </div>
+    <div class="field">
+      <label>答えまでの時間（秒）</label>
+      <input type="range" id="delay-slider" min="1" max="60" step="1" value="7">
+      <span class="val" id="delay-val">7 秒</span>
+    </div>
+    <div class="field">
+      <label>答え表示時間（秒）</label>
+      <input type="range" id="show-slider" min="1" max="30" step="1" value="3">
+      <span class="val" id="show-val">3 秒</span>
+    </div>
+  </div>
+
+  <!-- Toggles -->
+  <div class="toggles-block">
+    <div class="toggle-row">
+      <div class="toggle-label">
+        連続出題
+        <small>オン：解答後に自動で次問／オフ：解答画面で停止しスタートで次問</small>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-auto">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-label">
+        解答中の除数を表示
+        <small>オフにすると解答が表示されるまで除数を隠す</small>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-show-divisor" checked>
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="primary" id="btn-start">▶ スタート</button>
+    <button class="danger"  id="btn-stop"  disabled>■ ストップ</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="n" id="stat-total">0</div><div class="l">出題数</div></div>
+    <div class="stat"><div class="n" id="stat-session">00:00</div><div class="l">経過時間</div></div>
+  </div>
+
+  <details>
+    <summary>問題履歴</summary>
+    <div id="history-list"></div>
+  </details>
+
+</div>
+
+<script>
+const DIVIDEND = 142884n;
+const DECIMAL_PLACES = 12;
+
+function divideExactFull(divisorNum) {
+  const D = BigInt(divisorNum);
+  const intPart = DIVIDEND / D;
+  let rem = DIVIDEND % D;
+  let decDigits = '';
+  for (let i = 0; i < DECIMAL_PLACES; i++) {
+    rem = rem * 10n;
+    const digit = rem / D;
+    decDigits += digit.toString();
+    rem = rem % D;
+  }
+  return { intPart: intPart.toString(), decDigits, remainder: rem, divisorNum };
+}
+
+
+function randomDivisor() {
+  let n;
+  do { n = Math.floor(Math.random() * 900000) + 100000; } while (n % 10 === 0);
+  return n;
+}
+
+
+const ONES = ['', 'いち', 'に', 'さん', 'し', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
+const ONES_R = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
+
+const HYAKU = ['', 'ひゃく', 'にひゃく', 'さんびゃく', 'よんひゃく', 'ごひゃく',
+               'ろっぴゃく', 'ななひゃく', 'はっぴゃく', 'きゅうひゃく'];
+const JUU   = ['', 'じゅう', 'にじゅう', 'さんじゅう', 'よんじゅう', 'ごじゅう',
+               'ろくじゅう', 'ななじゅう', 'はちじゅう', 'きゅうじゅう'];
+const SEN_PREFIX = ['', 'せん', 'にせん', 'さんぜん', 'よんせん', 'ごせん',
+                    'ろくせん', 'ななせん', 'はっせん', 'きゅうせん'];
+
+function numberToJa(n) {
+  const man  = Math.floor(n / 10000);
+  const rest = n % 10000;
+  const sen  = Math.floor(rest / 1000);
+  const hya  = Math.floor((rest % 1000) / 100);
+  const juu  = Math.floor((rest % 100) / 10);
+  const ichi = rest % 10;
+
+  let s = '';
+
+  if (man >= 10) {
+    const manJuu  = Math.floor(man / 10);
+    const manIchi = man % 10;
+    s += JUU[manJuu];
+    if (manIchi > 0) s += ONES_R[manIchi];
+  } else {
+    s += ONES_R[man];
+  }
+  s += 'まん';
+
+  if (sen > 0) s += SEN_PREFIX[sen];
+  if (hya > 0) s += HYAKU[hya];
+  if (juu > 0) s += JUU[juu];
+  if (ichi > 0) s += ONES_R[ichi];
+
+  return s;
+}
+
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && window.speechSynthesis) {
+    speechSynthesis.resume();
+  }
+});
+
+let _speakOnEndGuard = false;
+
+function speak(text, rate, onEnd) {
+  if (!window.speechSynthesis) { onEnd && onEnd(); return; }
+
+  speechSynthesis.cancel();
+
+  const _onEnd = () => {
+    if (_speakOnEndGuard) return;
+    _speakOnEndGuard = true;
+    onEnd && onEnd();
+  };
+
+  const doSpeak = () => {
+    _speakOnEndGuard = false;
+    const utter = new SpeechSynthesisUtterance(text);
+
+    const selVoice = getSelectedVoice();
+    if (selVoice) {
+      utter.voice = selVoice;
+      utter.lang  = selVoice.lang;
+    } else {
+      utter.lang  = 'ja-JP';
+    }
+    utter.rate  = rate;
+    utter.pitch = 1;
+
+
+    const estMs = Math.max(4000, (text.length * 400 + 3000)) / rate;
+    const fallback = setTimeout(_onEnd, estMs);
+    utter.onend  = () => { clearTimeout(fallback); _onEnd(); };
+    utter.onerror = (e) => {
+      if (e.error === 'interrupted') return;
+      clearTimeout(fallback); _onEnd();
+    };
+    speechSynthesis.speak(utter);
+  };
+
+  setTimeout(doSpeak, 80);
+}
+
+const elDivisor     = document.getElementById('divisor-display');
+const elStatus      = document.getElementById('status');
+const elBar         = document.getElementById('bar');
+const elCountdown   = document.getElementById('countdown-display');
+const elAnsBlock    = document.getElementById('answer-block');
+const elAnsQ        = document.getElementById('ans-quotient');
+const elAnsD12      = document.getElementById('ans-d12');
+const elAnsRem      = document.getElementById('ans-remainder');
+const elBtnStart    = document.getElementById('btn-start');
+const elToggleAuto  = document.getElementById('toggle-auto');
+const elToggleDivisor = document.getElementById('toggle-show-divisor');
+const elBtnStop     = document.getElementById('btn-stop');
+const elStatTotal   = document.getElementById('stat-total');
+const elStatSess    = document.getElementById('stat-session');
+const elHistory     = document.getElementById('history-list');
+const elVoiceSelect = document.getElementById('voice-select');
+const elVoiceDisp   = document.getElementById('voice-name-disp');
+const elBtnVoiceTest= document.getElementById('btn-voice-test');
+const elRateSlider  = document.getElementById('rate-slider');
+const elRateVal     = document.getElementById('rate-val');
+const elDelaySlider = document.getElementById('delay-slider');
+const elDelayVal    = document.getElementById('delay-val');
+const elShowSlider  = document.getElementById('show-slider');
+const elShowVal     = document.getElementById('show-val');
+
+elRateSlider.addEventListener('input',  () => { elRateVal.textContent  = `×${parseFloat(elRateSlider.value).toFixed(1)}`; });
+elDelaySlider.addEventListener('input', () => { elDelayVal.textContent = `${elDelaySlider.value} 秒`; });
+elShowSlider.addEventListener('input',  () => { elShowVal.textContent  = `${elShowSlider.value} 秒`; });
+
+let allVoices = [];
+
+function populateVoices() {
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return;
+  allVoices = voices;
+
+  const prev = elVoiceSelect.value;
+  elVoiceSelect.innerHTML = '';
+
+  const jaVoices  = voices.filter(v => v.lang.startsWith('ja'));
+  const othVoices = voices.filter(v => !v.lang.startsWith('ja'));
+
+  function addGroup(label, list) {
+    if (!list.length) return;
+    const grp = document.createElement('optgroup');
+    grp.label = label;
+    list.forEach((v, i) => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = `${v.name}  (${v.lang})`;
+      if (v.default && label.startsWith('日本語')) opt.textContent += ' ★';
+      grp.appendChild(opt);
+    });
+    elVoiceSelect.appendChild(grp);
+  }
+
+  addGroup('日本語音声', jaVoices);
+  addGroup('その他', othVoices);
+
+  if (prev && [...elVoiceSelect.options].some(o => o.value === prev)) {
+    elVoiceSelect.value = prev;
+  } else if (jaVoices.length) {
+    elVoiceSelect.value = jaVoices[0].name;
+  }
+  updateVoiceDisp();
+}
+
+function getSelectedVoice() {
+  const name = elVoiceSelect.value;
+  return allVoices.find(v => v.name === name) || null;
+}
+
+function updateVoiceDisp() {
+  const v = getSelectedVoice();
+  elVoiceDisp.textContent = v ? `${v.lang}  ${v.localService ? '［ローカル］' : '［オンライン］'}` : '';
+}
+
+elVoiceSelect.addEventListener('change', updateVoiceDisp);
+
+
+if (window.speechSynthesis) {
+  populateVoices();
+
+  speechSynthesis.addEventListener('voiceschanged', populateVoices);
+
+  let _pollCount = 0;
+  const _pollVoices = setInterval(() => {
+    _pollCount++;
+    if (speechSynthesis.getVoices().length > 0) {
+      populateVoices();
+      clearInterval(_pollVoices);
+    } else if (_pollCount >= 30) {
+      clearInterval(_pollVoices);
+    }
+  }, 100);
+}
+
+elBtnVoiceTest.addEventListener('click', () => {
+  const rate = parseFloat(elRateSlider.value);
+  speak('きゅうじゅうはちまんななせんろっぴゃくごじゅうよん', rate, null);
+});
+
+
+let running       = false;
+let sessionCount  = 0;
+let sessionStart  = null;
+let timerInterval = null;
+let cdInterval    = null;
+let problemTimer  = null;
+let showTimer     = null;
+let currentResult = null;
+let onEndCalled   = false;
+
+function setStatus(msg, cls = '') {
+  elStatus.textContent = msg;
+  elStatus.className = 'status-line ' + cls;
+}
+
+function updateStats() {
+  elStatTotal.textContent = sessionCount;
+  if (sessionStart) {
+    const e = Math.floor((Date.now() - sessionStart) / 1000);
+    const m = String(Math.floor(e / 60)).padStart(2, '0');
+    const s = String(e % 60).padStart(2, '0');
+    elStatSess.textContent = `${m}:${s}`;
+  }
+}
+
+function startSessionTimer() {
+  if (!sessionStart) sessionStart = Date.now();
+  timerInterval = setInterval(updateStats, 1000);
+}
+function stopSessionTimer() { clearInterval(timerInterval); }
+
+function startBar(durationSec) {
+  elBar.style.transition = 'none';
+  elBar.style.width = '100%';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    elBar.style.transition = `width ${durationSec}s linear`;
+    elBar.style.width = '0%';
+  }));
+}
+function resetBar() {
+  elBar.style.transition = 'none';
+  elBar.style.width = '100%';
+}
+
+function startCountdown(delaySec) {
+  let remaining = delaySec;
+  elCountdown.textContent = remaining;
+  elCountdown.className = 'countdown-display' + (remaining <= 3 ? ' urgent' : '');
+  elCountdown.classList.remove('idle');
+
+  cdInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      stopCountdown();
+      return;
+    }
+    elCountdown.textContent = remaining;
+    elCountdown.className = 'countdown-display' + (remaining <= 3 ? ' urgent' : '');
+  }, 1000);
+}
+function stopCountdown() {
+  clearInterval(cdInterval);
+  elCountdown.className = 'countdown-display idle';
+  elCountdown.textContent = '—';
+}
+
+function showAnswer(result) {
+  const { intPart, decDigits, remainder, divisorNum } = result;
+  const d12digit  = decDigits[11];
+  const decBefore = decDigits.slice(0, 11);
+
+  elAnsQ.innerHTML =
+    `<span>${intPart}.</span>` +
+    `<span class="decimal-part">${decBefore}</span>` +
+    `<span class="highlight-12">${d12digit}</span>`;
+
+  elAnsD12.innerHTML  = `<span class="highlight-12">${d12digit}</span>`;
+  elAnsRem.innerHTML  = `<span class="remainder-val">${remainder.toString()}</span>`;
+  elDivisor.classList.remove('hidden');
+  elAnsBlock.classList.add('visible');
+
+  sessionCount++;
+  updateStats();
+  addHistory(sessionCount, divisorNum, intPart, decDigits, d12digit, remainder);
+}
+function hideAnswer() { elAnsBlock.classList.remove('visible'); }
+
+function addHistory(idx, divisor, intPart, decDigits, d12, rem) {
+  const div = document.createElement('div');
+  div.className = 'hist-item';
+  div.innerHTML =
+    `<span class="hist-num">${idx}</span>` +
+    `<span class="hist-expr">142884÷${divisor}</span>` +
+    `<span class="hist-d12">D12=${d12}</span>` +
+    `<span class="hist-rem">R=${rem}</span>`;
+  elHistory.prepend(div);
+}
+
+
+function runOneProblem() {
+  if (!running) return;
+
+  const delaySec = parseInt(elDelaySlider.value, 10);
+  const showSec  = parseInt(elShowSlider.value, 10);
+  const rate     = parseFloat(elRateSlider.value);
+  const divisor  = randomDivisor();
+
+  currentResult = divideExactFull(divisor);
+  onEndCalled   = false;
+
+  hideAnswer();
+  stopCountdown();
+  resetBar();
+  elDivisor.textContent = divisor.toString();
+  elDivisor.classList.add('hidden');
+  setStatus('読み上げ中...', 'reading');
+
+  setTimeout(() => {
+    if (!running) return;
+    if (elToggleDivisor.checked) elDivisor.classList.remove('hidden');
+
+    speak(numberToJa(divisor), rate, () => {
+      if (!running || onEndCalled) return;
+      onEndCalled = true;
+
+      setStatus(`答えまで ${delaySec} 秒`, 'waiting');
+      startBar(delaySec);
+      startCountdown(delaySec);
+
+      problemTimer = setTimeout(() => {
+        if (!running) return;
+        stopCountdown();
+        showAnswer(currentResult);
+        setStatus('正解', 'showing');
+
+
+        if (elToggleAuto.checked) {
+          showTimer = setTimeout(() => {
+            if (!running) return;
+            runOneProblem();
+          }, showSec * 1000);
+        } else {
+          running = false;
+          elBtnStart.disabled = false;
+          elBtnStop.disabled  = true;
+          setStatus('スタートで次の問題へ', 'waiting');
+        }
+
+      }, delaySec * 1000);
+    });
+
+  }, 300);
+}
+
+
+elBtnStart.addEventListener('click', () => {
+  if (running) return;
+  running = true;
+  elBtnStart.disabled = true;
+  elBtnStop.disabled  = false;
+  if (!sessionStart) startSessionTimer();
+  else if (!timerInterval) timerInterval = setInterval(updateStats, 1000);
+  hideAnswer();
+  runOneProblem();
+});
+
+elBtnStop.addEventListener('click', () => {
+  running = false;
+  elBtnStart.disabled = false;
+  elBtnStop.disabled  = true;
+  clearTimeout(problemTimer);
+  clearTimeout(showTimer);
+  stopCountdown();
+  resetBar();
+  hideAnswer();
+  elDivisor.classList.add('hidden');
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  setStatus('停止中 — スタートで再開', '');
+  stopSessionTimer();
+});
+
+setStatus('スタートを押して練習を開始');
+</script>
+</body>
+</html>
