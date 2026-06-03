@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>珠算 13桁商割 練習</title>
+<title>十三商割</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -23,9 +23,47 @@
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  /* iOS Safari タップ時のハイライトを抑制 */
   button, select, input, label { -webkit-tap-highlight-color: transparent; }
-  input[type=range] { -webkit-appearance: none; appearance: none; }
-  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; }
+  /* range スライダー: クロスブラウザ対応スタイル */
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+  input[type=range]::-moz-range-track {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+  }
 
   body {
     background: var(--bg);
@@ -96,10 +134,13 @@
     font-weight: 400;
     color: var(--accent2);
     letter-spacing: .04em;
-    transition: opacity .3s;
   }
-  .divisor.hidden { opacity: 0; }
+  .divisor.hidden {
+    visibility: hidden;  /* レイアウト維持したまま確実に非表示 */
+    pointer-events: none;
+  }
 
+  /* ── カウントダウン数字 ── */
   .countdown-display {
     text-align: center;
     font-family: var(--mono);
@@ -179,6 +220,7 @@
     margin-top: 2px;
   }
 
+  /* ── Settings ── */
   .settings-row {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -198,7 +240,6 @@
     min-height: 2.2em;
   }
   .field input[type=range] {
-    accent-color: var(--accent);
     width: 100%;
     cursor: pointer;
   }
@@ -208,6 +249,7 @@
     color: var(--accent2);
   }
 
+  /* ── 音声セレクタ ── */
   .voice-row {
     display: flex;
     flex-direction: column;
@@ -351,6 +393,7 @@
     .settings-row { grid-template-columns: 1fr; }
   }
 
+  /* ── トグルスイッチ共通 ── */
   .toggle-row {
     display: flex;
     align-items: center;
@@ -373,6 +416,7 @@
     letter-spacing: .08em;
     margin-top: 2px;
   }
+  /* トグルスイッチ本体 */
   .toggle-switch {
     position: relative;
     flex-shrink: 0;
@@ -421,7 +465,7 @@
 <body>
 
 <header>
-  <div class="title-ja">珠算 １３商割</div>
+  <div class="title-ja">十三商割</div>
 </header>
 
 <div class="card">
@@ -502,7 +546,7 @@
     </div>
     <div class="toggle-row">
       <div class="toggle-label">
-        解答中の除数を表示
+        解答中のわる数を表示
         <small>オフにすると解答が表示されるまで除数を隠す</small>
       </div>
       <label class="toggle-switch">
@@ -512,16 +556,19 @@
     </div>
   </div>
 
+  <!-- Buttons -->
   <div class="btn-row">
     <button class="primary" id="btn-start">▶ スタート</button>
     <button class="danger"  id="btn-stop"  disabled>■ ストップ</button>
   </div>
 
+  <!-- Stats -->
   <div class="stats-row">
     <div class="stat"><div class="n" id="stat-total">0</div><div class="l">出題数</div></div>
     <div class="stat"><div class="n" id="stat-session">00:00</div><div class="l">経過時間</div></div>
   </div>
 
+  <!-- History -->
   <details>
     <summary>問題履歴</summary>
     <div id="history-list"></div>
@@ -530,6 +577,11 @@
 </div>
 
 <script>
+/* =========================================================
+   BigInt 高精度割り算
+   142884 ÷ D を小数第12位まで計算し余りを返す
+   余り: 商×D + 余り = 142884×10^12 を満たす整数 (0 ≦ 余り < D)
+========================================================= */
 const DIVIDEND = 142884n;
 const DECIMAL_PLACES = 12;
 
@@ -547,64 +599,84 @@ function divideExactFull(divisorNum) {
   return { intPart: intPart.toString(), decDigits, remainder: rem, divisorNum };
 }
 
-
+/* =========================================================
+   乱数: 6桁、下1桁 ≠ 0
+========================================================= */
 function randomDivisor() {
   let n;
   do { n = Math.floor(Math.random() * 900000) + 100000; } while (n % 10 === 0);
   return n;
 }
 
-
+/* =========================================================
+   数字 → 日本語読み上げテキスト
+   例: 987654 → "きゅうじゅうはちまんななせんろっぴゃくごじゅうよん"
+========================================================= */
 const ONES = ['', 'いち', 'に', 'さん', 'し', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
 const ONES_R = ['', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
 
+// 連濁・音便の特殊形
 const HYAKU = ['', 'ひゃく', 'にひゃく', 'さんびゃく', 'よんひゃく', 'ごひゃく',
                'ろっぴゃく', 'ななひゃく', 'はっぴゃく', 'きゅうひゃく'];
 const JUU   = ['', 'じゅう', 'にじゅう', 'さんじゅう', 'よんじゅう', 'ごじゅう',
                'ろくじゅう', 'ななじゅう', 'はちじゅう', 'きゅうじゅう'];
+// 千 (1000未満の先頭を省略: 1000 = "せん", 2000 = "にせん")
 const SEN_PREFIX = ['', 'せん', 'にせん', 'さんぜん', 'よんせん', 'ごせん',
                     'ろくせん', 'ななせん', 'はっせん', 'きゅうせん'];
 
 function numberToJa(n) {
-  const man  = Math.floor(n / 10000);
-  const rest = n % 10000;
-  const sen  = Math.floor(rest / 1000);
-  const hya  = Math.floor((rest % 1000) / 100);
-  const juu  = Math.floor((rest % 100) / 10);
-  const ichi = rest % 10;
+  // n は 100000–999999 の整数
+  const man  = Math.floor(n / 10000);      // 万の桁 (1–99)
+  const rest = n % 10000;                   // 万未満 (0–9999)
+  const sen  = Math.floor(rest / 1000);    // 千
+  const hya  = Math.floor((rest % 1000) / 100); // 百
+  const juu  = Math.floor((rest % 100) / 10);   // 十
+  const ichi = rest % 10;                        // 一
 
   let s = '';
 
+  // 万の部分（1–99万）
   if (man >= 10) {
     const manJuu  = Math.floor(man / 10);
     const manIchi = man % 10;
     s += JUU[manJuu];
     if (manIchi > 0) s += ONES_R[manIchi];
   } else {
+    // 1–9万: "いちまん"、ただし "いち" は省略しない
     s += ONES_R[man];
   }
   s += 'まん';
 
+  // 千
   if (sen > 0) s += SEN_PREFIX[sen];
+  // 百
   if (hya > 0) s += HYAKU[hya];
+  // 十
   if (juu > 0) s += JUU[juu];
+  // 一
   if (ichi > 0) s += ONES_R[ichi];
 
   return s;
 }
 
-
+/* =========================================================
+   Web Speech API
+========================================================= */
+// iOS Safari: バックグラウンド復帰後に paused になる問題を修正
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && window.speechSynthesis) {
     speechSynthesis.resume();
   }
 });
 
+// 二重呼び出し防止フラグ
 let _speakOnEndGuard = false;
 
 function speak(text, rate, onEnd) {
   if (!window.speechSynthesis) { onEnd && onEnd(); return; }
 
+  // iOS Safari: cancel() 直後に speak() すると無音になるため
+  // cancel → 短いディレイ → speak の順序を確保する
   speechSynthesis.cancel();
 
   const _onEnd = () => {
@@ -617,6 +689,7 @@ function speak(text, rate, onEnd) {
     _speakOnEndGuard = false;
     const utter = new SpeechSynthesisUtterance(text);
 
+    // 選択中の音声を適用（未選択時は lang で自動選択）
     const selVoice = getSelectedVoice();
     if (selVoice) {
       utter.voice = selVoice;
@@ -627,20 +700,26 @@ function speak(text, rate, onEnd) {
     utter.rate  = rate;
     utter.pitch = 1;
 
-
+    // iOS Safari の onend 不発フォールバック
+    // 日本語は1文字あたり約200ms（rate=1）。余裕を持って×2 + 3秒
     const estMs = Math.max(4000, (text.length * 400 + 3000)) / rate;
     const fallback = setTimeout(_onEnd, estMs);
     utter.onend  = () => { clearTimeout(fallback); _onEnd(); };
     utter.onerror = (e) => {
+      // 'interrupted' は cancel() によるものなので無視
       if (e.error === 'interrupted') return;
       clearTimeout(fallback); _onEnd();
     };
     speechSynthesis.speak(utter);
   };
 
+  // iOS: cancel 後 80ms 待ってから speak
   setTimeout(doSpeak, 80);
 }
 
+/* =========================================================
+   UI 要素
+========================================================= */
 const elDivisor     = document.getElementById('divisor-display');
 const elStatus      = document.getElementById('status');
 const elBar         = document.getElementById('bar');
@@ -666,44 +745,100 @@ const elDelayVal    = document.getElementById('delay-val');
 const elShowSlider  = document.getElementById('show-slider');
 const elShowVal     = document.getElementById('show-val');
 
+// スライダー表示更新
 elRateSlider.addEventListener('input',  () => { elRateVal.textContent  = `×${parseFloat(elRateSlider.value).toFixed(1)}`; });
 elDelaySlider.addEventListener('input', () => { elDelayVal.textContent = `${elDelaySlider.value} 秒`; });
 elShowSlider.addEventListener('input',  () => { elShowVal.textContent  = `${elShowSlider.value} 秒`; });
 
+/* =========================================================
+   音声選択
+========================================================= */
 let allVoices = [];
+
+// 主要環境の日本語音声名 既知リスト
+// 表示名 → [実際の voice.name の候補（部分一致）]
+const JA_VOICE_CATALOG = [
+  { label: 'Kyoko（macOS/iOS・女性）',  keys: ['Kyoko'] },
+  { label: 'Otoya（macOS/iOS・男性）',  keys: ['Otoya'] },
+  { label: 'O-ren（macOS・女性）',      keys: ['O-ren', 'Oren'] },
+  { label: 'Hattori（macOS・男性）',    keys: ['Hattori'] },
+  { label: 'Haruka（Windows・女性）',   keys: ['Haruka', 'Microsoft Haruka'] },
+  { label: 'Ichiro（Windows・男性）',   keys: ['Ichiro', 'Microsoft Ichiro'] },
+  { label: 'Nanami（Windows・女性）',   keys: ['Nanami', 'Microsoft Nanami'] },
+  { label: 'Google 日本語',             keys: ['Google 日本語', 'Google Japanese'] },
+  { label: 'Google JP（Android）',      keys: ['ja-JP', 'ja_JP'] },
+];
+
+function findVoiceByKeys(voices, keys) {
+  for (const key of keys) {
+    const found = voices.find(v =>
+      v.name.includes(key) || v.voiceURI?.includes(key)
+    );
+    if (found) return found;
+  }
+  return null;
+}
 
 function populateVoices() {
   const voices = speechSynthesis.getVoices();
   if (!voices.length) return;
   allVoices = voices;
 
+  const jaVoices = voices.filter(v => v.lang.startsWith('ja'));
+  if (!jaVoices.length) {
+    // 日本語音声がない環境はすべての音声を表示
+    elVoiceSelect.innerHTML = '<option value="">（システム既定）</option>';
+    voices.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = `${v.name} (${v.lang})`;
+      elVoiceSelect.appendChild(opt);
+    });
+    updateVoiceDisp();
+    return;
+  }
+
   const prev = elVoiceSelect.value;
   elVoiceSelect.innerHTML = '';
 
-  const jaVoices  = voices.filter(v => v.lang.startsWith('ja'));
-  const othVoices = voices.filter(v => !v.lang.startsWith('ja'));
+  // ① カタログに載っている音声を優先グループに表示
+  const grpKnown = document.createElement('optgroup');
+  grpKnown.label = '日本語音声';
+  let addedKnown = 0;
+  JA_VOICE_CATALOG.forEach(entry => {
+    const v = findVoiceByKeys(jaVoices, entry.keys);
+    if (!v) return;
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = entry.label;
+    grpKnown.appendChild(opt);
+    addedKnown++;
+  });
 
-  function addGroup(label, list) {
-    if (!list.length) return;
-    const grp = document.createElement('optgroup');
-    grp.label = label;
-    list.forEach((v, i) => {
-      const opt = document.createElement('option');
-      opt.value = v.name;
-      opt.textContent = `${v.name}  (${v.lang})`;
-      if (v.default && label.startsWith('日本語')) opt.textContent += ' ★';
-      grp.appendChild(opt);
-    });
-    elVoiceSelect.appendChild(grp);
-  }
+  // ② カタログ外の日本語音声をその他グループに
+  const knownNames = new Set();
+  JA_VOICE_CATALOG.forEach(entry => {
+    const v = findVoiceByKeys(jaVoices, entry.keys);
+    if (v) knownNames.add(v.name);
+  });
+  const unknown = jaVoices.filter(v => !knownNames.has(v.name));
+  const grpOther = document.createElement('optgroup');
+  grpOther.label = 'その他の日本語音声';
+  unknown.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = `${v.name} (${v.lang})`;
+    grpOther.appendChild(opt);
+  });
 
-  addGroup('日本語音声', jaVoices);
-  addGroup('その他', othVoices);
+  if (addedKnown) elVoiceSelect.appendChild(grpKnown);
+  if (unknown.length) elVoiceSelect.appendChild(grpOther);
 
+  // 以前の選択を復元、なければ最初の選択肢
   if (prev && [...elVoiceSelect.options].some(o => o.value === prev)) {
     elVoiceSelect.value = prev;
-  } else if (jaVoices.length) {
-    elVoiceSelect.value = jaVoices[0].name;
+  } else if (elVoiceSelect.options.length) {
+    elVoiceSelect.selectedIndex = 0;
   }
   updateVoiceDisp();
 }
@@ -720,12 +855,17 @@ function updateVoiceDisp() {
 
 elVoiceSelect.addEventListener('change', updateVoiceDisp);
 
-
+// voices 初期化
+// Chrome 系: voiceschanged イベントで取得
+// iOS Safari: voiceschanged が発火しない → ポーリングで取得
 if (window.speechSynthesis) {
+  // まず同期で試みる（既にロード済みの場合）
   populateVoices();
 
+  // イベントリスナー（Chrome, Firefox 等）
   speechSynthesis.addEventListener('voiceschanged', populateVoices);
 
+  // iOS Safari 向けポーリング: 最大3秒、100ms 間隔
   let _pollCount = 0;
   const _pollVoices = setInterval(() => {
     _pollCount++;
@@ -738,22 +878,28 @@ if (window.speechSynthesis) {
   }, 100);
 }
 
+// 試聴ボタン
 elBtnVoiceTest.addEventListener('click', () => {
   const rate = parseFloat(elRateSlider.value);
   speak('きゅうじゅうはちまんななせんろっぴゃくごじゅうよん', rate, null);
 });
 
-
+/* =========================================================
+   状態
+========================================================= */
 let running       = false;
 let sessionCount  = 0;
 let sessionStart  = null;
-let timerInterval = null;
-let cdInterval    = null;
-let problemTimer  = null;
-let showTimer     = null;
+let timerInterval = null;  // 経過時間更新
+let cdInterval    = null;  // カウントダウン毎秒
+let problemTimer  = null;  // 答え表示タイマー
+let showTimer     = null;  // 次問題タイマー
 let currentResult = null;
-let onEndCalled   = false;
+let onEndCalled   = false; // speak onEnd の二重発火防止
 
+/* =========================================================
+   ヘルパー
+========================================================= */
 function setStatus(msg, cls = '') {
   elStatus.textContent = msg;
   elStatus.className = 'status-line ' + cls;
@@ -775,6 +921,7 @@ function startSessionTimer() {
 }
 function stopSessionTimer() { clearInterval(timerInterval); }
 
+/* バーアニメーション */
 function startBar(durationSec) {
   elBar.style.transition = 'none';
   elBar.style.width = '100%';
@@ -788,6 +935,7 @@ function resetBar() {
   elBar.style.width = '100%';
 }
 
+/* カウントダウン表示 */
 function startCountdown(delaySec) {
   let remaining = delaySec;
   elCountdown.textContent = remaining;
@@ -810,6 +958,7 @@ function stopCountdown() {
   elCountdown.textContent = '—';
 }
 
+/* 答え表示 */
 function showAnswer(result) {
   const { intPart, decDigits, remainder, divisorNum } = result;
   const d12digit  = decDigits[11];
@@ -822,6 +971,7 @@ function showAnswer(result) {
 
   elAnsD12.innerHTML  = `<span class="highlight-12">${d12digit}</span>`;
   elAnsRem.innerHTML  = `<span class="remainder-val">${remainder.toString()}</span>`;
+  // 解答表示時は除数も必ず表示する
   elDivisor.classList.remove('hidden');
   elAnsBlock.classList.add('visible');
 
@@ -842,7 +992,9 @@ function addHistory(idx, divisor, intPart, decDigits, d12, rem) {
   elHistory.prepend(div);
 }
 
-
+/* =========================================================
+   メインループ
+========================================================= */
 function runOneProblem() {
   if (!running) return;
 
@@ -854,6 +1006,7 @@ function runOneProblem() {
   currentResult = divideExactFull(divisor);
   onEndCalled   = false;
 
+  // --- 準備 ---
   hideAnswer();
   stopCountdown();
   resetBar();
@@ -863,8 +1016,10 @@ function runOneProblem() {
 
   setTimeout(() => {
     if (!running) return;
+    // 「解答中に除数表示」トグルに従う
     if (elToggleDivisor.checked) elDivisor.classList.remove('hidden');
 
+    // 読み上げ開始（終了後にカウントダウン開始）
     speak(numberToJa(divisor), rate, () => {
       if (!running || onEndCalled) return;
       onEndCalled = true;
@@ -879,13 +1034,15 @@ function runOneProblem() {
         showAnswer(currentResult);
         setStatus('正解', 'showing');
 
-
+        // 連続出題ON: showSec秒後に自動で次問
+        // 連続出題OFF: スタートボタンを再び押せるようにして停止
         if (elToggleAuto.checked) {
           showTimer = setTimeout(() => {
             if (!running) return;
             runOneProblem();
           }, showSec * 1000);
         } else {
+          // 解答画面で一時停止
           running = false;
           elBtnStart.disabled = false;
           elBtnStop.disabled  = true;
@@ -898,12 +1055,15 @@ function runOneProblem() {
   }, 300);
 }
 
-
+/* =========================================================
+   ボタン
+========================================================= */
 elBtnStart.addEventListener('click', () => {
   if (running) return;
   running = true;
   elBtnStart.disabled = true;
   elBtnStop.disabled  = false;
+  // セッションタイマーは初回のみ開始
   if (!sessionStart) startSessionTimer();
   else if (!timerInterval) timerInterval = setInterval(updateStats, 1000);
   hideAnswer();
@@ -925,6 +1085,7 @@ elBtnStop.addEventListener('click', () => {
   stopSessionTimer();
 });
 
+/* 初期化 */
 setStatus('スタートを押して練習を開始');
 </script>
 </body>
