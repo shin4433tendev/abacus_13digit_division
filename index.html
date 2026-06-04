@@ -883,7 +883,8 @@ function showAnswer(result) {
     const rate = parseFloat(elRateSelect.value);
     const actualLastTwo = remStr.slice(-2);
     let readStr = '';
-    const digitToKana = { '0': 'ぜろ', '1': 'いち', '2': 'に', '3': 'さん', '4': 'よん', '5': 'ご', '6': 'ろく', '7': 'なな', '8': 'はち', '9': 'きゅう' };
+    // 2を「にい」、5を「ごお」に変更
+    const digitToKana = { '0': 'ぜろ', '1': 'いち', '2': 'にい', '3': 'さん', '4': 'よん', '5': 'ごお', '6': 'ろく', '7': 'なな', '8': 'はち', '9': 'きゅう' };
     for (let char of actualLastTwo) {
       readStr += digitToKana[char];
     }
