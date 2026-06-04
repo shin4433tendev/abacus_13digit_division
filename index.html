@@ -480,6 +480,16 @@
         <span class="toggle-track"></span>
       </label>
     </div>
+    <div class="toggle-row">
+      <div class="toggle-label">
+        余り下2桁の読み上げ
+        <small>解答表示時に余りの下2桁を音声で読み上げる</small>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle-read-remainder" checked>
+        <span class="toggle-track"></span>
+      </label>
+    </div>
   </div>
 
   <div class="btn-row">
@@ -637,6 +647,7 @@ const elAnsDetails  = document.getElementById('ans-details');
 const elBtnStart    = document.getElementById('btn-start');
 const elToggleAuto  = document.getElementById('toggle-auto');
 const elToggleDivisor = document.getElementById('toggle-show-divisor');
+const elToggleReadRem = document.getElementById('toggle-read-remainder');
 const elBtnStop     = document.getElementById('btn-stop');
 const elStatTotal   = document.getElementById('stat-total');
 const elStatSess    = document.getElementById('stat-session');
@@ -840,7 +851,7 @@ function showAnswer(result) {
   if (remStr === '') remStr = '0';
   elAnsRem.innerHTML  = `<span class="remainder-val">${remStr}</span>`;
 
-  // 詳細表示行の生成（例: '84 その上 9054 親 3'）
+  // 詳細表示行の生成
   let lastTwo = "";
   let reversedRest = "";
   
@@ -867,16 +878,18 @@ function showAnswer(result) {
   updateStats();
   addHistory(sessionCount, divisorNum, intPart, decDigits, d13digit, remStr);
 
-  // 余りの下二桁を読み上げる
-  const rate = parseFloat(elRateSelect.value);
-  const actualLastTwo = remStr.slice(-2);
-  let readStr = '';
-  const digitToKana = { '0': 'ぜろ', '1': 'いち', '2': 'に', '3': 'さん', '4': 'よん', '5': 'ご', '6': 'ろく', '7': 'なな', '8': 'はち', '9': 'きゅう' };
-  for (let char of actualLastTwo) {
-    readStr += digitToKana[char];
-  }
-  if (readStr) {
-    speak(readStr, rate, null);
+  // 余りの下二桁を読み上げる（トグルがオンの時のみ）
+  if (elToggleReadRem.checked) {
+    const rate = parseFloat(elRateSelect.value);
+    const actualLastTwo = remStr.slice(-2);
+    let readStr = '';
+    const digitToKana = { '0': 'ぜろ', '1': 'いち', '2': 'に', '3': 'さん', '4': 'よん', '5': 'ご', '6': 'ろく', '7': 'なな', '8': 'はち', '9': 'きゅう' };
+    for (let char of actualLastTwo) {
+      readStr += digitToKana[char];
+    }
+    if (readStr) {
+      speak(readStr, rate, null);
+    }
   }
 }
 
@@ -916,8 +929,7 @@ function runOneProblem() {
 
   setTimeout(() => {
     if (!running) return;
-    if (elToggleDivisor.checked) elDivisor.classList.remove('hidden');
-
+    
     // 「めやすおいて」の発声と1秒間のポーズ
     speak('めやすおいて', rate, () => {
       setTimeout(() => {
@@ -926,6 +938,9 @@ function runOneProblem() {
         speak(numberToJa(divisor), rate, () => {
           if (!running || onEndCalled) return;
           onEndCalled = true;
+
+          // 読み上げ完了後に除数を表示（設定がオンの場合）
+          if (elToggleDivisor.checked) elDivisor.classList.remove('hidden');
 
           setStatus(`答えまで ${delaySec} 秒`, 'waiting');
           startBar(delaySec);
