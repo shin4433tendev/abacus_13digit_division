@@ -172,7 +172,6 @@
     margin-top: 2px;
   }
 
-  /* 共通のカスタムセレクトボックス */
   .custom-select {
     width: 100%;
     background: #0a0a0a;
@@ -426,12 +425,12 @@
       <span class="ans-value" id="ans-quotient"></span>
     </div>
     <div class="ans-row">
-      <span class="ans-label">親</span>
-      <span class="ans-value" id="ans-d13"></span>
-    </div>
-    <div class="ans-row">
       <span class="ans-label">余り※</span>
       <span class="ans-value" id="ans-remainder"></span>
+    </div>
+    <div class="ans-row">
+      <span class="ans-label"></span>
+      <span class="ans-value" id="ans-details"></span>
     </div>
     <div class="ans-note">※ 余り = 小数第13位まで計算後の残り（整数1位と小数1～7位を省略）</div>
   </div>
@@ -511,7 +510,7 @@ for (let i = 5; i <= 20; i++) {
   let v = (i / 10).toFixed(1);
   elRateSelect.insertAdjacentHTML('beforeend', `<option value="${v}" ${v==='1.0'?'selected':''}>×${v}</option>`);
 }
-for (let i = 10; i <= 600; i += 5) { // 1.0〜60.0 (0.5刻み)
+for (let i = 10; i <= 600; i += 5) {
   let v = (i / 10).toFixed(1);
   elDelaySelect.insertAdjacentHTML('beforeend', `<option value="${v}" ${v==='7.0'?'selected':''}>${v} 秒</option>`);
 }
@@ -633,8 +632,8 @@ const elBar         = document.getElementById('bar');
 const elCountdown   = document.getElementById('countdown-display');
 const elAnsBlock    = document.getElementById('answer-block');
 const elAnsQ        = document.getElementById('ans-quotient');
-const elAnsD13      = document.getElementById('ans-d13');
 const elAnsRem      = document.getElementById('ans-remainder');
+const elAnsDetails  = document.getElementById('ans-details');
 const elBtnStart    = document.getElementById('btn-start');
 const elToggleAuto  = document.getElementById('toggle-auto');
 const elToggleDivisor = document.getElementById('toggle-show-divisor');
@@ -834,13 +833,32 @@ function showAnswer(result) {
     `<span>${intPart}.</span>` +
     `<span class="decimal-part">${decBefore}</span>` +
     `<span class="highlight-13">${d13digit}</span>`;
-  elAnsD13.innerHTML  = `<span class="highlight-13">${d13digit}</span>`;
 
   // 余り文字列の生成
   let remStr = remainder.toString().padStart(6, '0');
   remStr = remStr.replace(/0+$/, ''); // 末尾の0を削除
   if (remStr === '') remStr = '0';
   elAnsRem.innerHTML  = `<span class="remainder-val">${remStr}</span>`;
+
+  // 詳細表示行の生成（例: '84 その上 9054 親 3'）
+  let lastTwo = "";
+  let reversedRest = "";
+  
+  if (remStr.length >= 2) {
+    lastTwo = remStr.slice(-2);
+    reversedRest = remStr.slice(0, -2).split('').reverse().join('');
+  } else {
+    lastTwo = remStr;
+    reversedRest = "";
+  }
+
+  let detailsHtml = `<span style="color: var(--accent2);">${lastTwo}</span>`;
+  if (reversedRest) {
+    detailsHtml += ` <span style="color: var(--muted); font-size: 0.75rem; padding: 0 4px;">その上</span> <span style="color: var(--accent2);">${reversedRest}</span>`;
+  }
+  detailsHtml += ` <span style="color: var(--muted); font-size: 0.75rem; padding: 0 4px;">親</span> <span style="color: var(--accent2);">${d13digit}</span>`;
+  
+  elAnsDetails.innerHTML = detailsHtml;
 
   elDivisor.classList.remove('hidden');
   elAnsBlock.classList.add('visible');
@@ -851,10 +869,10 @@ function showAnswer(result) {
 
   // 余りの下二桁を読み上げる
   const rate = parseFloat(elRateSelect.value);
-  const lastTwo = remStr.slice(-2);
+  const actualLastTwo = remStr.slice(-2);
   let readStr = '';
   const digitToKana = { '0': 'ぜろ', '1': 'いち', '2': 'に', '3': 'さん', '4': 'よん', '5': 'ご', '6': 'ろく', '7': 'なな', '8': 'はち', '9': 'きゅう' };
-  for (let char of lastTwo) {
+  for (let char of actualLastTwo) {
     readStr += digitToKana[char];
   }
   if (readStr) {
