@@ -553,7 +553,7 @@ function divideExactFull(divisorNum) {
 ========================================================= */
 function randomDivisor() {
   let n;
-  do { n = Math.floor(Math.random() * 900000) + 100000; } while (n % 10 === 0);
+  do { n = Math.floor(Math.random() * 900000) + 100000; } while (n % 10 === 0 || n > 142884);
   return n;
 }
 
